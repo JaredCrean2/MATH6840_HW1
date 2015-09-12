@@ -3,16 +3,18 @@
 function driver()
   xmin = 0
   xmax = 1
-  tmax = 2.5
-  N = 20
-  r = 0.4
+  tmax = 0.1
+  N = 200
+  r = 0.5
   nu = 1
   ICFunc = ICSin
   BCL = BCZero
   BCR = BCZero
 
   u = solve(xmin, xmax, tmax, N, r, nu, ICFunc, BCL, BCR)
-  writedlm("u.dat", u)
+  vals = [xmin, xmax, tmax]
+  writedlm("counts.dat", vals)
+#  writedlm("u.dat", u)
 end
 
 function solve(xmin, xmax, tmax, N, r, nu, ICFunc::Function, BCL::Function, BCR::Function)
@@ -43,13 +45,17 @@ for i=1:N
   u[i, 1] = ICFunc(xmin + (i-1)*delta_x)
 end
 
-for tstep=2:nStep  # loop over timesteps
+flops = 0
 
-  println("tstep = ", tstep)
+time = @elapsed for tstep=2:nStep  # loop over timesteps
+
+#  println("tstep = ", tstep)
 
   # apply BC
   u[1, tstep] = BCL((tstep - 1)*delta_t)
   u[N, tstep] = BCR((tstep - 1)*delta_t)
+#   u[1, tstep] = 0.0
+#   u[N, tstep] = 0.0
 
 
   # calculate interior points
@@ -58,10 +64,18 @@ for tstep=2:nStep  # loop over timesteps
     u_k_1 = u[i-1, tstep-1]
     u_k_p1 = u[i+1, tstep - 1]
     u[i, tstep] = u_k + r*(u_k_p1 - 2*u_k + u_k_1)
+    
   end
+
+  flops += 5*(N-2)
+
+
 
 end
 
+println("time = ", time)
+flop_rate = 1e-6*flops/time  # MFlops/seconds
+println("flop rate = ", flop_rate, " MFlops/sec")
 
 return u
 
