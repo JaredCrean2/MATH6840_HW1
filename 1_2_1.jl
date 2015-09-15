@@ -16,7 +16,7 @@ function driver()
 #  u = solve(xmin, xmax, tmax, N, delta_t, nu, ICFunc, BCL, BCR)
   vals = [xmin, xmax, tmax, nu, delta_t]
   writedlm("counts.dat", vals)
-  writedlm("u.dat", u)
+  writedlm("u.dat")
 end
 
 function solve(xmin, xmax, tmax, N, delta_t, nu, ICFunc::Function, BCL::Function, BCR::Function)
