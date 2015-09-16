@@ -4,7 +4,7 @@ function driver()
   xmin = 0
   xmax = 1
   tmax = 1.0
-  N = 11
+  N = 31
   r = 0.4
 #  delta_t = 0.02
   nu = 1
@@ -20,7 +20,7 @@ function driver()
 
   vals = [xmin, xmax, tmax, nu, delta_t]
   writedlm("counts.dat", vals)
-  writedlm("u.dat", u[2:(end-1), end])
+  writedlm("u.dat", u[1:(end-1), end])
 end
 
 function solve(xmin, xmax, tmax, N, r, nu, ICFunc::Function, BCL::Function, BCR::Function)
@@ -45,7 +45,7 @@ println("nStep = ", nStep)
 
 
 # allocate storage
-u = Array(Float64, N+2, nStep)
+u = Array(Float64, N+1, nStep)
 
 # apply IC
 # Not applying BC at initial condition
@@ -62,9 +62,11 @@ time = @elapsed for tstep=2:nStep  # loop over timesteps
 
   # apply BC
   t_i = (tstep - 1)*delta_t
-  applyCompatBC(BCL, 2, t_i, tstep, delta_x, nu, u)
-  applyNeumannBC(BCR, N+1, t_i, tstep, delta_x, u; is_left=false)
+  u[1, tstep] = BCL(t_i)
+#  applyCompatBC(BCL, 2, t_i, tstep, delta_x, nu, u)
+  applyNeumannBC(BCR, N, t_i, tstep, delta_x, u; is_left=false)
 
+  println("u $tstep - 1 = ", u[:, tstep - 1])
 #  u[1, tstep] = BCL((tstep - 1)*delta_t)
 #  u[N, tstep] = BCR((tstep - 1)*delta_t)
 #   u[1, tstep] = 0.0
@@ -72,7 +74,7 @@ time = @elapsed for tstep=2:nStep  # loop over timesteps
 
 
   # calculate non-ghost points
-  for i=2:(N+1)
+  for i=2:(N)
     u_k = u[i, tstep - 1]
     u_k_1 = u[i-1, tstep - 1 ]
     u_k_p1 = u[i+1, tstep - 1]
@@ -90,6 +92,8 @@ time = @elapsed for tstep=2:nStep  # loop over timesteps
   end
 =#
 
+  println("u $tstep = ", u[:, tstep])
+
 end
 
 println("time = ", time)
@@ -99,22 +103,24 @@ println("flop rate = ", flop_rate, " MFlops/sec")
 
 # calculate maximum error
 err_max = typemin(Float64)
-for i=2:(N+1)
+for i=1:(N)
   println("i = ", i)
   x_i = xmin + (i-2)*delta_x
   ue = uExact(x_i, delta_t*nStep, nu)
-  err_i = abs(u[i] - ue)
+  err_i = abs(u[i, nStep] - ue)
   println("err_i = ", err_i)
   println("err_max = ", err_max)
-  println("ue = ", ue)
+  println("ue = ", ue, ", u[i] = ", u[i, nStep] )
   if err_i > err_max
     err_max = err_i
   end
 end
 
+println("final error = ", err_max)
+
 # write to file
 f = open("convergence.dat", "a")
-@printf(f, "%d %16.15f %16.15f", N, err_max, time)
+@printf(f, "%d %16.15f %16.15f\n", N, err_max, time)
 close(f)
 
 println("u = ", u[:, end])
@@ -128,17 +134,17 @@ function applyNeumannBC(f::Function, i::Integer, t, tstep, delta_x, u; is_left=t
 # apply Neumann BC to point i in the array u using ghost point
 # there must be an element u[i+1] to use as a ghost point
 # t is the current time
-  println("applying Neumann BC")
+#  println("applying Neumann BC")
   f_val = f(t)
 
   if is_left
-    ghost_val = u[i+1] - 2*delta_x*f_val
-    u[i-1, tstep] = ghost_val
+    ghost_val = u[i+1, tstep - 1] - 2*delta_x*f_val
+    u[i-1, tstep - 1] = ghost_val
   else
-    println("f_val = ", f_val, ", u[i-1] = ", u[i-1])
-    ghost_val = u[i-1] + 2*delta_x*f_val
+    println("f_val = ", f_val, ", u[i-1] = ", u[i-1, tstep - 1])
+    ghost_val = u[i-1, tstep - 1] + 2*delta_x*f_val
     println("ghost_val = ", ghost_val, ", written to ", i+1)
-    u[i+1, tstep] = ghost_val
+    u[i+1, tstep - 1] = ghost_val
   end
 
   return nothing
@@ -149,20 +155,20 @@ function applyCompatBC(f::Function, i::Integer, t, tstep, delta_x, nu, u; is_lef
 # apply a Direchlet compatable BC to the array u using a ghost point
 # if is the Direchlet function
 
-  println("applying compatability BC")
+#  println("applying compatability BC")
   # use complex step to get the df/dt
   epsilon = 1e-20
   val_pert = t + complex(0, epsilon)
   dfdt = imag( f(val_pert) )/epsilon
 
   if is_left
-    println("dfdt = ", dfdt, ", u[i] = ", u[i], ", u[i+1] = ", u[i+1])
-    ghost_val = delta_x*delta_x*dfdt/nu - u[i+1] + 2*u[i]
-    println("ghost_val = ", ghost_val, ", written to ", i-1)
-    u[i-1, tstep] = ghost_val
+#    println("dfdt = ", dfdt, ", u[i, tstep] = ", u[i, tstep], ", u[i+1, tstep] = ", u[i+1, tstep])
+    ghost_val = delta_x*delta_x*dfdt/nu - u[i+1, tstep - 1] + 2*u[i, tstep - 1]
+#    println("ghost_val = ", ghost_val, ", written to ", i-1)
+    u[i-1, tstep - 1] = ghost_val
   else
-    ghost_val = delta_x*delta_x*dfdt/nu - u[i-1] + 2*u[i]
-    u[i+1, tstep] = ghost_val
+    ghost_val = delta_x*delta_x*dfdt/nu - u[i-1, tstep - 1] + 2*u[i, tstep - 1]
+    u[i+1, tstep - 1] = ghost_val
   end
 
   return nothing
