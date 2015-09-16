@@ -3,7 +3,7 @@
 function driver()
   xmin = 0
   xmax = 1
-  tmax = 1.0
+  tmax = 10.0
   N = 11
   r = 0.4
 #  delta_t = 0.02
@@ -81,6 +81,14 @@ time = @elapsed for tstep=2:nStep  # loop over timesteps
   end
 
   flops += 5*(N-2)
+#=
+  contains_nan = contains(u[:, tstep], NaN)
+  if contains_nan
+    println("found NaN")
+    println("u[:, tstep] = ", u[:, tstep])
+    println("u[:, tstep-1] = ", u[:, tstep-1])
+  end
+=#
 
 end
 
@@ -118,12 +126,14 @@ function applyNeumannBC(f::Function, i::Integer, t, tstep, delta_x, u; is_left=t
 # apply Neumann BC to point i in the array u using ghost point
 # there must be an element u[i+1] to use as a ghost point
 # t is the current time
+  println("applying Neumann BC")
   f_val = f(t)
 
   if is_left
     ghost_val = u[i+1] - 2*delta_x*f_val
     u[i-1, tstep] = ghost_val
   else
+    println("f_val = ", f_val, ", u[i-1] = ", u[i-1])
     ghost_val = u[i-1] + 2*delta_x*f_val
     println("ghost_val = ", ghost_val, ", written to ", i+1)
     u[i+1, tstep] = ghost_val
@@ -137,12 +147,14 @@ function applyCompatBC(f::Function, i::Integer, t, tstep, delta_x, nu, u; is_lef
 # apply a Direchlet compatable BC to the array u using a ghost point
 # if is the Direchlet function
 
+  println("applying compatability BC")
   # use complex step to get the df/dt
   epsilon = 1e-20
   val_pert = t + complex(0, epsilon)
   dfdt = imag( f(val_pert) )/epsilon
 
   if is_left
+    println("dfdt = ", dfdt, ", u[i] = ", u[i], ", u[i+1] = ", u[i+1])
     ghost_val = delta_x*delta_x*dfdt/nu - u[i+1] + 2*u[i]
     println("ghost_val = ", ghost_val, ", written to ", i-1)
     u[i-1, tstep] = ghost_val
@@ -170,7 +182,15 @@ function uExact(x, t, nu)
   return exp(-nu*k*k*t)*sin(5*pi*x/2)
 end
 
+function contains(A, val)
+  for i=1:length(A)
+    if A[i] == val
+      return true
+    end
+  end
 
+  return false
+end
 
 # run
 driver()
