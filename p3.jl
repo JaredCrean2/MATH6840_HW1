@@ -3,7 +3,7 @@
 function driver()
   xmin = 0
   xmax = 1
-  tmax = 10.0
+  tmax = 1.0
   N = 11
   r = 0.4
 #  delta_t = 0.02
@@ -102,9 +102,11 @@ err_max = typemin(Float64)
 for i=2:(N+1)
   println("i = ", i)
   x_i = xmin + (i-2)*delta_x
-  err_i = abs(u[i] - uExact(x_i, delta_t*nStep, nu))
+  ue = uExact(x_i, delta_t*nStep, nu)
+  err_i = abs(u[i] - ue)
   println("err_i = ", err_i)
   println("err_max = ", err_max)
+  println("ue = ", ue)
   if err_i > err_max
     err_max = err_i
   end
