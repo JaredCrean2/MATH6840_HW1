@@ -3,8 +3,8 @@
 function driver()
   xmin = 0
   xmax = 1
-  tmax = 1.0
-  N = 31
+  tmax = .10
+  N = 81
   r = 0.4
 #  delta_t = 0.02
   nu = 1
@@ -54,24 +54,18 @@ for i=2:(N+1)
   u[i, 1] = ICFunc(xmin + (i-2)*delta_x)
 end
 
-flops = 0
+
+flops = 0 # count number of FLOPs
 
 time = @elapsed for tstep=2:nStep  # loop over timesteps
 
-  println("tstep = ", tstep)
+#  println("tstep = ", tstep)
 
   # apply BC
   t_i = (tstep - 1)*delta_t
   u[1, tstep] = BCL(t_i)
 #  applyCompatBC(BCL, 2, t_i, tstep, delta_x, nu, u)
   applyNeumannBC(BCR, N, t_i, tstep, delta_x, u; is_left=false)
-
-  println("u $tstep - 1 = ", u[:, tstep - 1])
-#  u[1, tstep] = BCL((tstep - 1)*delta_t)
-#  u[N, tstep] = BCR((tstep - 1)*delta_t)
-#   u[1, tstep] = 0.0
-#   u[N, tstep] = 0.0
-
 
   # calculate non-ghost points
   for i=2:(N)
@@ -83,16 +77,6 @@ time = @elapsed for tstep=2:nStep  # loop over timesteps
   end
 
   flops += 5*(N-2)
-#=
-  contains_nan = contains(u[:, tstep], NaN)
-  if contains_nan
-    println("found NaN")
-    println("u[:, tstep] = ", u[:, tstep])
-    println("u[:, tstep-1] = ", u[:, tstep-1])
-  end
-=#
-
-  println("u $tstep = ", u[:, tstep])
 
 end
 
@@ -104,13 +88,9 @@ println("flop rate = ", flop_rate, " MFlops/sec")
 # calculate maximum error
 err_max = typemin(Float64)
 for i=1:(N)
-  println("i = ", i)
   x_i = xmin + (i-2)*delta_x
   ue = uExact(x_i, delta_t*nStep, nu)
   err_i = abs(u[i, nStep] - ue)
-  println("err_i = ", err_i)
-  println("err_max = ", err_max)
-  println("ue = ", ue, ", u[i] = ", u[i, nStep] )
   if err_i > err_max
     err_max = err_i
   end
@@ -120,11 +100,9 @@ println("final error = ", err_max)
 
 # write to file
 f = open("convergence.dat", "a")
-@printf(f, "%d %16.15f %16.15f\n", N, err_max, time)
+@printf(f, "%d %16.15f %16.15f %d\n", N, err_max, time, nStep)
 close(f)
 
-println("u = ", u[:, end])
-#writedlm("u_.dat", u[:, end])
 return u
 
 end
@@ -141,9 +119,7 @@ function applyNeumannBC(f::Function, i::Integer, t, tstep, delta_x, u; is_left=t
     ghost_val = u[i+1, tstep - 1] - 2*delta_x*f_val
     u[i-1, tstep - 1] = ghost_val
   else
-    println("f_val = ", f_val, ", u[i-1] = ", u[i-1, tstep - 1])
     ghost_val = u[i-1, tstep - 1] + 2*delta_x*f_val
-    println("ghost_val = ", ghost_val, ", written to ", i+1)
     u[i+1, tstep - 1] = ghost_val
   end
 
@@ -162,9 +138,7 @@ function applyCompatBC(f::Function, i::Integer, t, tstep, delta_x, nu, u; is_lef
   dfdt = imag( f(val_pert) )/epsilon
 
   if is_left
-#    println("dfdt = ", dfdt, ", u[i, tstep] = ", u[i, tstep], ", u[i+1, tstep] = ", u[i+1, tstep])
     ghost_val = delta_x*delta_x*dfdt/nu - u[i+1, tstep - 1] + 2*u[i, tstep - 1]
-#    println("ghost_val = ", ghost_val, ", written to ", i-1)
     u[i-1, tstep - 1] = ghost_val
   else
     ghost_val = delta_x*delta_x*dfdt/nu - u[i-1, tstep - 1] + 2*u[i, tstep - 1]
