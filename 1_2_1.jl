@@ -3,20 +3,20 @@
 function driver()
   xmin = 0
   xmax = 1
-  tmax = 50.0
+  tmax = 50.01
   N = 11
 #  r = 0.5
-  delta_t = 0.059
+  delta_t = 0.061
   nu = 1/6
   ICFunc = ICSin
   BCL = BCZero
   BCR = BCZero
 
-  u = solve(xmin, xmax, tmax, N, delta_t, nu, ICFunc, BCL, BCR)
+  u, tmax_ret = solve(xmin, xmax, tmax, N, delta_t, nu, ICFunc, BCL, BCR)
 #  u = solve(xmin, xmax, tmax, N, delta_t, nu, ICFunc, BCL, BCR)
-  vals = [xmin, xmax, tmax, nu, delta_t]
+  vals = [xmin, xmax, tmax_ret, nu, delta_t]
   writedlm("counts.dat", vals)
-  writedlm("u.dat")
+  writedlm("u.dat", u)
 end
 
 function solve(xmin, xmax, tmax, N, delta_t, nu, ICFunc::Function, BCL::Function, BCR::Function)
@@ -32,7 +32,7 @@ function solve(xmin, xmax, tmax, N, delta_t, nu, ICFunc::Function, BCL::Function
 delta_x = (xmax - xmin)/(N-1)
 #delta_t = (r*delta_x^2)/nu  # nu*delta_t
 r = nu*delta_t/(delta_x^2)
-nStep = convert(Int, div(tmax, delta_t))
+nStep = convert(Int, div(tmax, delta_t)) + 1
 
 println("delta_x = ", delta_x)
 println("delta_t = ", delta_t)
@@ -89,7 +89,7 @@ println("time = ", time)
 flop_rate = 1e-6*flops/time  # MFlops/seconds
 println("flop rate = ", flop_rate, " MFlops/sec")
 
-return u_i
+return u_i, delta_t*(nStep - 1)
 
 end
 
