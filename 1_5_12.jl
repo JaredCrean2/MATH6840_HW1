@@ -3,7 +3,7 @@
 function driver()
   xmin = 0
   xmax = 1
-  tmax = 0.061
+  tmax = .901
   N = 11
 #  r = 0.5
   delta_t = 0.02
@@ -16,7 +16,7 @@ function driver()
 #  u = solve(xmin, xmax, tmax, N, delta_t, nu, ICFunc, BCL, BCR)
   vals = [xmin, xmax, tmax_ret, nu, delta_t]
   writedlm("counts.dat", vals)
-  writedlm("u.dat", u)
+  writedlm("u.dat", u[2:end-1])
 end
 
 function solve(xmin, xmax, tmax, N, delta_t, nu, ICFunc::Function, BCL::Function, BCR::Function)
@@ -41,14 +41,16 @@ println("nStep = ", nStep)
 
 
 # allocate storage
-u_i = Array(Float64, N) # current timestep
-u_i_1 = Array(Float64, N)  # previous timestpe
+n = N+2  # number of points in u
+u_i = Array(Float64, n) # current timestep
+u_i_1 = Array(Float64, n)  # previous timestpe
 
 # apply IC
 # Not applying BC at initial condition
 # hopefully IC and BC are consistent
-for i=1:N
-  u_i_1[i] = ICFunc(xmin + (i-1)*delta_x)
+for i=2:(n-1)
+  println("x = ", (i-2)*delta_x)
+  u_i_1[i] = ICFunc(xmin + (i-2)*delta_x)
 end
 
 flops = 0
@@ -57,24 +59,25 @@ time = @elapsed for tstep=2:nStep  # loop over timesteps
 
 #  println("tstep = ", tstep)
 
-  # apply BC
-  u_i_1[1] = BCL((tstep - 2)*delta_t)
-  u_i_1[N] = BCR((tstep - 2)*delta_t)
-  println("u_i_1 =\n", u_i_1)
-#   u[1, tstep] = 0.0
-#   u[N, tstep] = 0.0
+  # apply BC to u_i_1
+  BCL(u_i_1)
+  BCR(u_i_1, isleft=false)
 
+  println("u_i_1 =\n", u_i_1)
 
   # calculate interior points
-  for i=2:(N-1)
+  for i=3:(n-2)
     u_k = u_i_1[i]
     u_k_1 = u_i_1[i-1]
+    u_k_2 = u_i_1[i-2]
     u_k_p1 = u_i_1[i+1]
-    u_i[i] = u_k + r*(u_k_p1 - 2*u_k + u_k_1)
-    
+    u_k_p2 = u_i_1[i+2]
+
+#    u_i[i] = u_k + r*(u_k_p1 - 2*u_k + u_k_1)
+    u_i[i] = u_k + r*(-u_k_2/6 + 5*u_k_1/3 - 3*u_k + 5*u_k_p1/3 - u_k_p2/6)
   end
 
-  flops += 5*(N-2)
+  flops += 12*(n-4)
 
   # rebind names, using u_i as u_i_1, and reusing the array that was
   # u_i_1 as u_i for the next timestep
@@ -86,27 +89,55 @@ time = @elapsed for tstep=2:nStep  # loop over timesteps
 
 end
 
-# apply BCs to final time
-u_i_1[1] = BCL((nStep - 1)*delta_t)
-u_i_1[N] = BCR((nStep - 1)*delta_t)
+#apply BC to final time
+BCL(u_i_1)
+BCR(u_i_1, isleft=false)
 
 
+
+# apply BC to fina
 println("time = ", time)
 flop_rate = 1e-6*flops/time  # MFlops/seconds
 println("flop rate = ", flop_rate, " MFlops/sec")
 
-return u_i_1, delta_t*(nStep - 1)
+return u_i_1, delta_t*(nStep - 1)  # return u_i_1
 
 end
 
+
+function BCZero(u; isleft=true)
+# apply direchlet BC to boundary point, numerical BC =0 to ghost point
+
+  if isleft
+    u[2] = 0  # direchlet BC
+    u[1] = 0  # numerical BC
+  else
+    n = length(u)
+    u[n-1] = 0 # dirchlet BC
+    u[n] = 0  # numerical BC
+  end
+
+  return nothing
+end
+
+function BCD2(u; isleft=true)
+# apply direchlet BC to boundary pointer, numerical u''=0 to ghost point
+
+  if isleft
+    u[2] = 0  # dirchlet BC
+    u[1] = 2*u[2] - u[3]  # numerical BC
+  else
+    n = length(u)
+    u[n-1] = 0  # dirchlet BC
+    u[n] = 2*u[n-1] - u[n-2]
+  end
+
+  return nothing
+end
 
 
 function ICSin(x)
   return sin(2*pi*x)
-end
-
-function BCZero(x)
-  return 0.0
 end
 
 
