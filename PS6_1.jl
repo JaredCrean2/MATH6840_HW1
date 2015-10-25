@@ -4,7 +4,7 @@ using ArrayViews  # non-copying subarray package
 function driver()
   xmin = 0
   xmax = 1
-  N = 20  # N+1 = # of grid points
+  N = 160  # N+1 = # of grid points
   delta_x = (xmax - xmin)/N
 #  r = 0.5
 #  sigma = 0.75
@@ -12,7 +12,7 @@ function driver()
 #  nu = 1/6
 
 
-  tmax = delta_t + eps()
+  tmax = 1.0
   ICFunc = IC1
   BCL = BC1
   BCR = BC2
@@ -21,10 +21,14 @@ function driver()
   u, tmax_ret = solve(xmin, xmax, tmax, N, delta_t, ICFunc, BCL, BCR, src)
 #  u = solve(xmin, xmax, tmax, N, delta_t, nu, ICFunc, BCL, BCR)
   println("tmax_ret = ", tmax_ret)
-  calcError(u, xmin, xmax, tmax_ret, N)
+  max_err, l2_err = calcError(u, xmin, xmax, tmax_ret, N)
   vals = [xmin, xmax, tmax_ret, delta_t]
   writedlm("counts.dat", vals)
   writedlm("u.dat", u)
+
+  f = open("convergence.dat", "a+")
+  @printf(f, "%d %16.15f %16.15f\n", N, max_err, tmax_ret)
+  close(f)
 end
 
 function calcError(u, xmin, xmax, tmax, N)
@@ -54,6 +58,8 @@ function calcError(u, xmin, xmax, tmax, N)
   println("max error = ", err_max)
   println("L2 error = ", l2_err)
 
+  writedlm("u.dat", u)
+  writedlm("uexact.dat", u_ex)
   return err_max, l2_err
 end
 

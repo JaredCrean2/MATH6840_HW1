@@ -4,7 +4,7 @@ function driver()
   xmin = 0
   xmax = 1
   tmax = 1.00
-  N = 21
+  N = 161
   r = 0.4
 #  delta_t = 0.02
   nu = 1

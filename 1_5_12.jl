@@ -9,8 +9,8 @@ function driver()
   delta_t = 0.02
   nu = 1/6
   ICFunc = ICSin
-  BCL = BCZero
-  BCR = BCZero
+  BCL = BCD2
+  BCR = BCD2
 
   u, tmax_ret = solve(xmin, xmax, tmax, N, delta_t, nu, ICFunc, BCL, BCR)
 #  u = solve(xmin, xmax, tmax, N, delta_t, nu, ICFunc, BCL, BCR)
