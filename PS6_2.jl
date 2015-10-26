@@ -3,10 +3,10 @@ using ArrayViews  # non-copying subarray package
 
 function driver()
   xmin = 0
-  xmax = 1
+  xmax = pi
   ymin = 0
-  ymax = 1
-  N = 10  # N+1 = # of grid points in each direction
+  ymax = pi
+  N = 160  # N+1 = # of grid points in each direction
   delta_x = (xmax - xmin)/N
 #  r = 0.5
 #  sigma = 0.75
@@ -14,7 +14,7 @@ function driver()
 #  nu = 1/6
 
 
-  tmax = 40*delta_t + eps()
+  tmax = 1.0
   ICFunc = IC1
   BCxl = BC1
   BCxr = BC2
@@ -134,7 +134,7 @@ for i=1:mat_sizex  # loop along x direction
 end
 
 
-println("\nu_initial = \n", u_i)
+#println("\nu_initial = \n", u_i)
 
 # apply BC to IC
 
@@ -176,10 +176,11 @@ for i=2:(mat_sizey-1)  # loop over interior of Ay
 end
 
 
+Axf = lufact(Ax)
+Ayf = lufact(Ay)
 
-
-println("Ax = \n", Ax)
-println("Ay = \n", Ay)
+#println("Ax = \n", Ax)
+#println("Ay = \n", Ay)
 
 #println("A = \n", A)
 
@@ -228,9 +229,9 @@ time = @elapsed for tstep=1:nStep  # loop over timesteps
   t_qval = (tstep-0.75)*delta_t # time at n+1/4
 
   for j=2:(mat_sizey-1)  # loop over x grid lines, not including ghost lines
-    println("x grid line ", j-1)
+#    println("x grid line ", j-1)
     y_j = (j-2)*delta_y
-    println("y_j = ", y_j)
+#    println("y_j = ", y_j)
 
     # apply BC to rhs
     rhs_x[1] = BCxl(y_j, t_val)
@@ -246,13 +247,13 @@ time = @elapsed for tstep=1:nStep  # loop over timesteps
       rhs_x[i] = stencilx_l*u_k_1 + stencilx_c*u_k  + stencilx_r*u_k_p1 + delta_t*src_val/2      
     end
 
-    println("u[(j-1):(j+1), :] = \n", u_i[(j-1):(j+1), :])
-    println("rhs_x= \n", rhs_x)
+#    println("u[(j-1):(j+1), :] = \n", u_i[(j-1):(j+1), :])
+#    println("rhs_x= \n", rhs_x)
     # solve for next time step
   #  A_ldiv_B!(Af, rhs)  # rhs gets overwritten with new solution values
     u_i_1[j, :] = Ax\rhs_x  # check that this actually works
 
-    println("underlying array = \n", u_i_1[j, :])
+#    println("underlying array = \n", u_i_1[j, :])
 
 
   end  # end loop over x grid lines
@@ -264,19 +265,15 @@ time = @elapsed for tstep=1:nStep  # loop over timesteps
     u_i_1[mat_sizey, i] = 2*delta_x*BCyr(x_i, t_val) + u_i_1[mat_sizex - 2, i]
   end
 
-  u_tmp = u_i_1[ 2:(end-1), :]
+#  u_tmp = u_i_1[ 2:(end-1), :]
 
-  println("after x step, u_i_1 = \n", u_i_1)
-  calcError(u_tmp, xmin, xmax, ymin, ymax, t_val, N)
+#  println("after x step, u_i_1 = \n", u_i_1)
+#  calcError(u_tmp, xmin, xmax, ymin, ymax, t_val, N)
 
   # update variables
   tmp = u_i
-  println("tmp === u_i ", tmp === u_i) # true
   u_i = u_i_1
-  println("tmp === u_i_1 ", tmp === u_i_1)  # false
   u_i_1 = tmp
-
-  println("u_i === u_i_1 : ", u_i === u_i_1)
 
   println("\nPerforming y step")
 
@@ -289,7 +286,7 @@ time = @elapsed for tstep=1:nStep  # loop over timesteps
 
 
   for j=2:(mat_sizex-1)
-    println("y grid line ", j)
+#    println("y grid line ", j)
     x_j = (j-1)*delta_x
 
     # apply BC to rhs
@@ -306,13 +303,13 @@ time = @elapsed for tstep=1:nStep  # loop over timesteps
       rhs_y[i] = stencily_l*u_k_1 + stencily_c*u_k  + stencily_r*u_k_p1 + delta_t*src_val/2      
     end
 
-    println("(j-1):(j+1) = ", (j-1):(j+1))
-    println("u[:, (j-1):(j+1)] = \n", u_i[:, (j-1):(j+1)])
-    println("rhs_y= \n", rhs_y)
+#    println("(j-1):(j+1) = ", (j-1):(j+1))
+#    println("u[:, (j-1):(j+1)] = \n", u_i[:, (j-1):(j+1)])
+#    println("rhs_y= \n", rhs_y)
  
     u_i_1[:, j] = Ay\rhs_y
 
-    println("underlying array = \n", u_i_1[:, j])
+#    println("underlying array = \n", u_i_1[:, j])
   end  # end loop over y grid lines
 
 
@@ -331,10 +328,10 @@ time = @elapsed for tstep=1:nStep  # loop over timesteps
   end
 
 
-  u_tmp = u_i_1[ 2:(end-1), :]
+#  u_tmp = u_i_1[ 2:(end-1), :]
 
-  println("after y step, u_i_1 = \n", u_i_1)
-  calcError(u_tmp, xmin, xmax, ymin, ymax, t_val, N)
+#  println("after y step, u_i_1 = \n", u_i_1)
+#  calcError(u_tmp, xmin, xmax, ymin, ymax, t_val, N)
 
 
 
@@ -359,33 +356,39 @@ return u_i, delta_t*(nStep)  # plus 1 because we are at the beginning of the nex
 end
 
 
+function IC1(x, y)
+  return sin(x)*(cos(y) - 3*cos(2*y))
+end
+
+
+function BC1(y, t)
+  return 0
+end
+
+function BC2(y, t)
+  return 0
+end
+
+function BC3(x, t)
+  return 0
+end
+
+function BC4(x, t)
+  return 0
+end
+
+
+function SRC(x, y, t)
+  return 0
+end
+
+function uExact(x, y, t)
+  return sin(x)*cos(y)*e^(-2*t) - 3*sin(x)*cos(2*y)e^(-5*t)
+end
+
+
+
 #=
-function IC1(x)
-  return 2*cos(3*x)
-end
-
-function BCZero(x)
-  return 0.0
-end
-
-function BC1(t)
-  return 2*cos(t)
-end
-
-function BC2(t)
-  return -6*sin(3)*cos(t)
-end
-
-function SRC(x, t)
-  return -2*cos(3*x)*sin(t) - 6*sin(3x)*cos(t) + 18*cos(3*x)*cos(t)
-end
-
-function uExact(x, t)
-  return 2*cos(3*x)*cos(t)
-end
-=#
-
-
 function IC1(x, y)
   return x*x + x + y*y +y + 1
 end
@@ -415,7 +418,7 @@ end
 function uExact(x, y, t)
   return x*x + x + y*y + y + t*t + t + 1
 end
-
+=#
 
 
 # run
