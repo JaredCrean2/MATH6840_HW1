@@ -6,7 +6,7 @@ function driver()
   xmax = pi
   ymin = 0
   ymax = pi
-  N = 160  # N+1 = # of grid points in each direction
+  N = 1000  # N+1 = # of grid points in each direction
   delta_x = (xmax - xmin)/N
 #  r = 0.5
 #  sigma = 0.75
@@ -29,7 +29,7 @@ function driver()
   max_err, l2_err = calcError(u_vals, xmin, xmax, ymin, ymax, tmax_ret, N)
   vals = [xmin, xmax, tmax_ret, delta_t]
   writedlm("counts.dat", vals)
-  writedlm("u.dat", u)
+#  writedlm("u.dat", u)
 
   f = open("convergence.dat", "a+")
   @printf(f, "%d %16.15f %16.15f\n", N, max_err, tmax_ret)
@@ -40,6 +40,7 @@ function calcError(u, xmin, xmax, ymin, ymax, tmax, N)
 # calculate the error
 # u should not include the ghost point
 
+  println("size(u) = ", size(u))
   print("\n")
   delta_x = (xmax - xmin)/N
   delta_y = (ymax - ymin)/N
@@ -59,15 +60,16 @@ function calcError(u, xmin, xmax, ymin, ymax, tmax, N)
   err_max = maximum(abs(err))
   l2_err = norm(err)
 
-  println("err = \n", err)
-  println("u = \n", u)
-  println("u_ex = \n", u_ex)
+#  println("err = \n", err)
+#  println("u = \n", u)
+#  println("u_ex = \n", u_ex)
 
 
 
   println("max error = ", err_max)
   println("L2 error = ", l2_err)
 
+#  println("size(u) = ", size(u))
   writedlm("u.dat", u)
   writedlm("uexact.dat", u_ex)
   return err_max, l2_err
@@ -251,7 +253,7 @@ time = @elapsed for tstep=1:nStep  # loop over timesteps
 #    println("rhs_x= \n", rhs_x)
     # solve for next time step
   #  A_ldiv_B!(Af, rhs)  # rhs gets overwritten with new solution values
-    u_i_1[j, :] = Ax\rhs_x  # check that this actually works
+    u_i_1[j, :] = Axf\rhs_x  # check that this actually works
 
 #    println("underlying array = \n", u_i_1[j, :])
 
@@ -307,7 +309,7 @@ time = @elapsed for tstep=1:nStep  # loop over timesteps
 #    println("u[:, (j-1):(j+1)] = \n", u_i[:, (j-1):(j+1)])
 #    println("rhs_y= \n", rhs_y)
  
-    u_i_1[:, j] = Ay\rhs_y
+    u_i_1[:, j] = Ayf\rhs_y
 
 #    println("underlying array = \n", u_i_1[:, j])
   end  # end loop over y grid lines
@@ -357,7 +359,7 @@ end
 
 
 function IC1(x, y)
-  return sin(x)*(cos(y) - 3*cos(2*y))
+  return sin(x)*cos(y) - 3*sin(x)*cos(2*y)
 end
 
 
