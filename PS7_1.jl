@@ -4,7 +4,7 @@ using ArrayViews  # non-copying subarray package
 function driver()
   xmin = 0
   xmax = 1
-  N = 10  # N = # of grid points (not including ghosts)
+  N = 40  # N = # of grid points (not including ghosts)
   delta_x = (xmax - xmin)/N
 #  r = 0.5
 #  sigma = 0.75
@@ -12,7 +12,7 @@ function driver()
 #  nu = 1/6
 
 
-  tmax = delta_t + eps()
+  tmax = 1.0
   ICFunc = IC1
   BCL = BC1
   BCR = BC2
@@ -117,19 +117,28 @@ A[1, 2] = 1/delta_x
 
 # do right BC
 A[mat_size, mat_size] = 1/(delta_x)
-A[mat_size, mat_size-1] = -1/(delta_x)  # this BC makes A not Tridiagonal
+A[mat_size, mat_size-1] = -1/(delta_x) 
 
 
 for i=2:(mat_size-1)  # loop over interior of matrix
   # evaluate coefficient D
-  x_jp = (i-1)*delta_x  # x coordinate at j + 1/2
-  x_jm = (i-2)*delta_x  # x coordinate at j - 1/2
+  x_j = (i-3/2)*delta_x  # x coordinate at j
+  x_jp = (i-1/2)*delta_x  # x coordinate at j + 1
+  x_jm = (i-5/2)*delta_x  # x coordinate at j - 1
+  D_j = calcD(x_j)
   D_jp = calcD(x_jp)
   D_jm = calcD(x_jm)
 
-  A[i, i-1] = -r*D_jm
-  A[i, i] = 1 + r*(D_jp + D_jm)
-  A[i, i+1] = -r*D_jp
+  D_jph = 0.5*(D_j + D_jp)  # Dj+1/2
+  D_jmh = 0.5*(D_j + D_jm)  # Dj-1/2
+
+  stencil_l = -r*D_jmh
+  stencil_c = 1 + r*(D_jph + D_jmh)
+  stencil_r = -r*D_jph
+
+  A[i, i-1] = stencil_l
+  A[i, i] = stencil_c
+  A[i, i+1] = stencil_r
 end
 
 
@@ -159,14 +168,19 @@ time = @elapsed for tstep=1:nStep  # loop over timesteps
     src_val = source( (i-3/2)*delta_x, (tstep - 0.5)*delta_t) 
 
     # get coefficient values
-    x_jp = (i-1)*delta_x  # x coordinate at j + 1/2
-    x_jm = (i-2)*delta_x  # x coordinate at j - 1/2
+    x_j = (i-3/2)*delta_x
+    x_jp = (i-1/2)*delta_x  # x coordinate at j + 1
+    x_jm = (i-5/2)*delta_x  # x coordinate at j - 1
+    D_j = calcD(x_j)
     D_jp = calcD(x_jp)
     D_jm = calcD(x_jm)
 
-    stencil_l = r*D_jm
-    stencil_c = 1 - r*(D_jp + D_jm)
-    stencil_r = r*D_jp
+    D_jph = 0.5*(D_j + D_jp)  # Dj+1/2
+    D_jmh = 0.5*(D_j + D_jm)  # Dj-1/2
+
+    stencil_l = r*D_jmh
+    stencil_c = 1 - r*(D_jph + D_jmh)
+    stencil_r = r*D_jph
 
 
     rhs[i] = stencil_l*u_k_1 + stencil_c*u_k  + stencil_r*u_k_p1 + delta_t*src_val
@@ -201,37 +215,37 @@ return u_i[2:end-1], delta_t*(nStep)  # plus 1 because we are at the beginning o
 end
 
 
-#=
+
 function IC1(x)
-  return 2*cos(3*x)
+  return cos(x)
 end
 
-function BCZero(x)
-  return 0.0
-end
+#function BCZero(x)
+#  return 0.0
+#end
 
 function BC1(t)
-  return 2*cos(t)
+  return 0
 end
 
 function BC2(t)
-  return -6*sin(3)*cos(t)
+  return -sin(1)*cos(t)
 end
 
 function SRC(x, t)
-  return -2*cos(3*x)*sin(t) - 6*sin(3x)*cos(t) + 18*cos(3*x)*cos(t)
+  return -cos(x)*sin(t) + cos(x)*cos(t) + sin(x)*sin(x)*cos(t) - cos(x)*cos(x)*cos(t)
 end
 
 function uExact(x, t)
-  return 2*cos(3*x)*cos(t)
+  return cos(x)*cos(t)
 end
-=#
+
 
 function calcD(x)
   return 1 - 0.1*cos(x)
 end
 
-
+#=
 function IC1(x)
   return x
 end
@@ -253,7 +267,7 @@ function uExact(x, t)
   return x
 end
 
-
+=#
 
 # run
 driver()
