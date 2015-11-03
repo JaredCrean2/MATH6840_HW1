@@ -4,7 +4,7 @@ using ArrayViews  # non-copying subarray package
 function driver()
   xmin = 0
   xmax = 1
-  N = 40  # N = # of grid points (not including ghosts)
+  N = 10  # N = # of grid points (not including ghosts)
   delta_x = (xmax - xmin)/N
 #  r = 0.5
 #  sigma = 0.75
@@ -12,7 +12,7 @@ function driver()
 #  nu = 1/6
 
 
-  tmax = 1.0
+  tmax = delta_t + eps()
   ICFunc = IC1
   BCL = BC1
   BCR = BC2
@@ -215,7 +215,7 @@ return u_i[2:end-1], delta_t*(nStep)  # plus 1 because we are at the beginning o
 end
 
 
-
+#=
 function IC1(x)
   return cos(x)
 end
@@ -233,21 +233,22 @@ function BC2(t)
 end
 
 function SRC(x, t)
-  return -cos(x)*sin(t) + cos(x)*cos(t) + sin(x)*sin(x)*cos(t) - cos(x)*cos(x)*cos(t)
+#  return -cos(x)*sin(t) + cos(x)*cos(t) + sin(x)*sin(x)*cos(t) - cos(x)*cos(x)*cos(t)
+  return cos(x)*cos(t) + 2*cos(x)*sin(t)
 end
 
 function uExact(x, t)
   return cos(x)*cos(t)
 end
-
+=#
 
 function calcD(x)
-  return 1 - 0.1*cos(x)
+  return 1e6
 end
 
-#=
+
 function IC1(x)
-  return x
+  return x*x + x + 1
 end
 
 
@@ -256,18 +257,19 @@ function BC1(t)
 end
 
 function BC2(t)
-  return 1
+  return 3
 end
 
 function SRC(x, t)
-  return -0.1*sin(x)
+#  return -0.1*sin(x)
+   return 2*t - 1e6*2 + 1
 end
 
 function uExact(x, t)
-  return x
+  return x*x + x + t*t + t + 1
 end
 
-=#
+
 
 # run
 driver()
